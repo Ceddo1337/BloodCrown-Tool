@@ -284,17 +284,9 @@
         <button onclick="stepVerkauf(1)">+</button>
       </div>
 
-      <label for="verkaufQualitaet" style="margin-top:18px;">Qualität</label>
-      <select id="verkaufQualitaet" style="width:100%; max-width:260px; padding:10px 14px; border-radius:10px; border:2px solid var(--accent); background:var(--input-bg); color:var(--text); font-size:1rem;">
-        <option value="Sehr gut">Sehr gut</option>
-        <option value="Gut">Gut</option>
-        <option value="Mittel">Mittel</option>
-        <option value="Schlecht">Schlecht</option>
-      </select>
-
       <label for="verkaufPreis" style="margin-top:18px;">Verkaufspreis pro LSD ($)</label>
       <input type="number" id="verkaufPreis" value="0" min="0" style="width:100%; max-width:220px; font-size:1.15rem; font-weight:700; padding:10px 14px; border-radius:10px; border:2px solid var(--accent); background:var(--input-bg); color:var(--text);">
-      <div class="note" style="margin-top:6px;">Wird pro Qualitätsstufe separat gespeichert — sobald ihr die Preise kennt, hier einfach eintragen.</div>
+      <div class="note" style="margin-top:6px;">Preis schwankt je nach Verkäufer — hier einfach den aktuellen Preis eintragen.</div>
 
       <div class="card" style="margin-top:20px; background:var(--input-bg);">
         <table style="margin-top:0;">
@@ -599,12 +591,7 @@
 
   // ---------- LSD Verkaufsrechner ----------
   const LSD_PRODUKTIONSKOSTEN = 230;
-  if (!state.lsdPrices) state.lsdPrices = {};
-
-  function loadPriceForQuality() {
-    const qual = document.getElementById("verkaufQualitaet").value;
-    document.getElementById("verkaufPreis").value = state.lsdPrices[qual] || 0;
-  }
+  if (state.verkaufPreis == null) state.verkaufPreis = 0;
 
   function stepVerkauf(delta) {
     const el = document.getElementById("verkaufAnzahl");
@@ -614,15 +601,9 @@
   }
 
   function onVerkaufPreisChange() {
-    const qual = document.getElementById("verkaufQualitaet").value;
     const price = Math.max(0, parseInt(document.getElementById("verkaufPreis").value, 10) || 0);
-    state.lsdPrices[qual] = price;
+    state.verkaufPreis = price;
     saveState();
-    refreshVerkauf();
-  }
-
-  function onVerkaufQualitaetChange() {
-    loadPriceForQuality();
     refreshVerkauf();
   }
 
@@ -641,9 +622,8 @@
   }
 
   document.getElementById("verkaufAnzahl").addEventListener("input", refreshVerkauf);
-  document.getElementById("verkaufQualitaet").addEventListener("change", onVerkaufQualitaetChange);
   document.getElementById("verkaufPreis").addEventListener("input", onVerkaufPreisChange);
-  loadPriceForQuality();
+  document.getElementById("verkaufPreis").value = state.verkaufPreis;
   if (state.ausbeute.durchgaenge != null) document.getElementById("ausbeuteDurchgaenge").value = state.ausbeute.durchgaenge;
   if (state.ausbeute.erhalten != null) document.getElementById("ausbeuteErhalten").value = state.ausbeute.erhalten;
   onAusbeuteChange();
