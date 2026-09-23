@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The Blood Crown — Rezeptrechner</title>
+<link rel="icon" type="image/png" href="data:image/png;base64,__FAVICON_B64__">
+<style>
+  :root {
+    --bg: #0a0508;
+    --card-bg: #160c11;
+    --text: #f1e4e8;
+    --text-muted: #b98a97;
+    --accent: #d81159;
+    --accent-bright: #ff2f6e;
+    --border: #3a1420;
+    --input-bg: #24101a;
+    --good: #3ddc84;
+    --bad: #ff6b6b;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: radial-gradient(circle at 50% -10%, #1a0912 0%, var(--bg) 55%);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    min-height: 100%;
+    padding: 28px 16px 48px;
+  }
+  .wrap { max-width: 780px; margin: 0 auto; }
+  .logo-row { display: flex; align-items: center; gap: 16px; margin-bottom: 8px; }
+  .logo-row img { width: 64px; height: 64px; border-radius: 50%; box-shadow: 0 0 18px rgba(216,17,89,0.6); flex-shrink: 0; }
+  h1 { font-size: 1.5rem; margin: 0; letter-spacing: 0.02em; color: var(--accent-bright); text-shadow: 0 0 12px rgba(255,47,110,0.35); }
+  .sub { color: var(--text-muted); font-size: 0.9rem; margin: 4px 0 0; }
+  .search-row { margin: 20px 0 16px; }
+  .search-row input {
+    width: 100%;
+    padding: 14px 18px;
+    border-radius: 12px;
+    border: 2px solid var(--accent);
+    background: var(--input-bg);
+    color: var(--text);
+    font-size: 1.05rem;
+  }
+  .search-hits { margin-top: 8px; font-size: 0.8rem; color: var(--text-muted); display: none; }
+  .search-hits.show { display: block; }
+  .search-hits span {
+    display: inline-block;
+    background: var(--card-bg);
+    border: 1px solid var(--accent);
+    color: var(--accent-bright);
+    border-radius: 999px;
+    padding: 3px 10px;
+    margin: 2px 4px 2px 0;
+    cursor: pointer;
+    font-size: 0.75rem;
+  }
+  .tabs { display: flex; gap: 8px; margin-bottom: 20px; overflow-x: auto; flex-wrap: wrap; }
+  .tab-btn {
+    flex: 1 1 auto;
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--card-bg);
+    color: var(--text);
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .tab-btn.active {
+    background: linear-gradient(135deg, var(--accent), #7a0e34);
+    color: #fff;
+    border-color: var(--accent-bright);
+    box-shadow: 0 0 14px rgba(216,17,89,0.4);
+  }
+  .sub-tabs {
+    display: none;
+    margin-top: -12px;
+    margin-bottom: 20px;
+    padding-left: 14px;
+    border-left: 2px solid var(--border);
+  }
+  .sub-tabs.show { display: flex; }
+  .tab-btn.sub { font-size: 0.82rem; padding: 8px 12px; opacity: 0.85; }
+  .tab-btn.sub.active { opacity: 1; }
+  .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin-bottom: 16px; box-shadow: 0 4px 24px rgba(0,0,0,0.4); }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  label { display: block; font-weight: 600; margin-bottom: 8px; font-size: 0.95rem; }
+  input[type=number] {
+    width: 100%; max-width: 220px; font-size: 1.3rem; font-weight: 700;
+    padding: 10px 14px; border-radius: 10px; border: 2px solid var(--accent);
+    background: var(--input-bg); color: var(--text);
+  }
+  .stepper { display: flex; align-items: center; gap: 10px; }
+  .stepper button {
+    width: 42px; height: 42px; border-radius: 10px; border: 1px solid var(--border);
+    background: var(--input-bg); color: var(--accent-bright); font-size: 1.3rem; cursor: pointer;
+  }
+  table { width: 100%; border-collapse: collapse; margin-top: 18px; overflow-x: auto; display: block; }
+  thead, tbody { display: table; width: 100%; table-layout: fixed; }
+  th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
+  th { color: var(--text-muted); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.03em; }
+  td.num, th.num { text-align: right; }
+  td.total { font-weight: 700; color: var(--accent-bright); }
+  td.deficit-ok { color: var(--good); font-weight: 700; }
+  td.deficit-bad { color: var(--bad); font-weight: 700; }
+  tr.search-match { background: rgba(216,17,89,0.15); }
+  tr.search-dim { opacity: 0.3; }
+  .steps { margin-top: 18px; padding-top: 14px; border-top: 1px dashed var(--border); font-size: 0.85rem; color: var(--text-muted); line-height: 1.6; }
+  .steps b { color: var(--text); }
+  .note { font-size: 0.8rem; color: var(--text-muted); margin-top: 14px; font-style: italic; }
+  .item-head { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
+  .item-icon { width: 52px; height: 52px; border-radius: 12px; background: linear-gradient(135deg, var(--accent), #7a0e34); display: flex; align-items: center; justify-content: center; font-size: 26px; flex-shrink: 0; }
+  .meta-row { display: flex; gap: 16px; margin-bottom: 18px; flex-wrap: wrap; }
+  .meta-box { flex: 1; min-width: 140px; }
+  .meta-box .k { color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; }
+  .meta-box .v { font-weight: 700; }
+  .inv-grid { display: grid; grid-template-columns: 1fr auto; gap: 10px 14px; align-items: center; }
+  .inv-grid label { margin-bottom: 0; font-weight: 500; }
+  .inv-grid input { width: 110px; max-width: 110px; font-size: 1rem; padding: 6px 10px; }
+  .copy-btn {
+    margin-top: 14px; padding: 8px 16px; border-radius: 8px; border: 1px solid var(--accent);
+    background: transparent; color: var(--accent-bright); font-weight: 600; font-size: 0.85rem; cursor: pointer;
+  }
+  .copy-btn:active { background: var(--accent); color: #fff; }
+  .craftable-list { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
+  .craftable-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--input-bg); border-radius: 10px; border: 1px solid var(--border); }
+  .craftable-item .n { font-weight: 700; color: var(--accent-bright); font-size: 1.1rem; }
+
+  @media (max-width: 480px) {
+    body { padding: 16px 10px 40px; }
+    .logo-row img { width: 52px; height: 52px; }
+    h1 { font-size: 1.2rem; }
+    .sub { font-size: 0.8rem; }
+    .tabs { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 4px; }
+    .tabs::-webkit-scrollbar { height: 4px; }
+    .tab-btn { flex: 0 0 auto; padding: 10px 14px; font-size: 0.82rem; }
+    .card { padding: 14px; border-radius: 12px; }
+    .stepper button { width: 46px; height: 46px; font-size: 1.4rem; }
+    input[type=number] { font-size: 1.15rem; max-width: 160px; }
+    th, td { padding: 8px 6px; font-size: 0.85rem; }
+    .item-head { gap: 10px; }
+    .item-icon { width: 44px; height: 44px; font-size: 22px; }
+    .meta-row { gap: 10px; }
+    .inv-grid { grid-template-columns: 1fr auto; gap: 8px 10px; }
+    .inv-grid input { width: 90px; max-width: 90px; }
+    .copy-btn { width: 100%; padding: 12px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="logo-row">
+    <img src="data:image/png;base64,__LOGO_B64__" alt="The Blood Crown Logo">
+    <div>
+      <h1>THE BLOOD CROWN</h1>
+      <p class="sub">Rezeptrechner</p>
+    </div>
+  </div>
+
+  <div class="search-row">
+    <input type="text" id="searchInput" placeholder="Material suchen (z.B. Stahl) ...">
+    <div class="search-hits" id="searchHits"></div>
+  </div>
+
+  <div class="tabs" id="tabBar">
+    <button class="tab-btn active" data-tab="waffen">🔫 Waffen</button>
+    <button class="tab-btn" data-tab="lsd">🧪 LSD</button>
+    <button class="tab-btn" data-tab="munition">📦 Munition</button>
+    <button class="tab-btn" data-tab="inventar">🎒 Inventar</button>
+    <button class="tab-btn" data-tab="uebersicht">📊 Übersicht</button>
+    <button class="tab-btn" data-tab="changelog">📜 Changelog</button>
+  </div>
+  <div class="tabs sub-tabs show" id="weaponSubTabBar">
+    <button class="tab-btn sub active" data-subtab="pistol">🔫 Pistol</button>
+    <button class="tab-btn sub" data-subtab="messer">🗡️ Schlangenmesser</button>
+    <button class="tab-btn sub" data-subtab="dolch">🔪 Dolch</button>
+  </div>
+  <div class="tabs sub-tabs" id="lsdSubTabBar">
+    <button class="tab-btn sub active" data-subtab="lsd-herstellen">🧪 Herstellen</button>
+    <button class="tab-btn sub" data-subtab="lsd-verkaufen">💰 Verkaufen</button>
+  </div>
+
+  <div class="panel active" id="panel-pistol">
+    <div class="card">
+      <div class="item-head">
+        <div class="item-icon">🔫</div>
+        <div>
+          <div style="font-weight:700; font-size:1.05rem;">Pistol</div>
+          <div style="color:var(--text-muted); font-size:0.85rem;">Die klassische Standardpistole — einfach zu bauen, zuverlässig, der Einstieg ins Waffenhandwerk.</div>
+        </div>
+      </div>
+      <div class="meta-row">
+        <div class="meta-box"><div class="k">Produktionsdauer</div><div class="v">360 Min.</div></div>
+        <div class="meta-box"><div class="k">Belohnung</div><div class="v" style="color:var(--good);">+50 Waffenbau-XP</div></div>
+      </div>
+
+      <label for="qty-pistol">Anzahl Pistolen</label>
+      <div class="stepper">
+        <button onclick="stepQty('pistol',-1)">−</button>
+        <input type="number" id="qty-pistol" value="1" min="0">
+        <button onclick="stepQty('pistol',1)">+</button>
+      </div>
+
+      <div style="margin-top:20px; font-weight:700; color:var(--accent-bright); font-size:0.9rem; text-transform:uppercase; letter-spacing:0.03em;">🔩 Waffenchip <span style="font-weight:400; color:var(--text-muted); text-transform:none; letter-spacing:normal; font-size:0.75rem;">(Herstellungsdauer 1 Min. — unabhängig vom Fraktionslevel auf Vorrat baubar)</span></div>
+      <table><thead><tr><th>Material</th><th class="num">Pro Chip</th><th class="num">Gesamt</th><th class="num">Kosten</th></tr></thead><tbody id="body-pistol-chip"></tbody></table>
+
+      <div style="margin-top:24px; font-weight:700; color:var(--accent-bright); font-size:0.9rem; text-transform:uppercase; letter-spacing:0.03em;">🔫 Pistol (zusätzlich zum Chip)</div>
+      <table><thead><tr><th>Material</th><th class="num">Pro Pistol</th><th class="num">Gesamt</th><th class="num">Kosten</th></tr></thead><tbody id="body-pistol-item"></tbody></table>
+
+      <div style="margin-top:24px; font-weight:700; font-size:0.9rem; text-transform:uppercase; letter-spacing:0.03em; color:var(--text-muted);">Σ Kombiniert (Chip + Pistol)</div>
+      <table><thead><tr><th>Material</th><th class="num">Pro Pistol</th><th class="num">Gesamt</th><th class="num">Kosten</th></tr></thead><tbody id="body-pistol"></tbody></table>
+      <div class="note" id="cost-pistol"></div>
+
+      <button class="copy-btn" onclick="copyList('pistol')">📋 Kombinierte Liste kopieren</button>
+      <div class="note">
+        Annahme: 1 Pistol = 1 Waffenchip (24 Plastik, 15 Polymer, 12 Aluminium, 18 Schrauben)
+        + Pistol-Zutaten (75 Stahl, 36 Schrauben, 24 Waffenteile, 3 Waffenlauf, 3 Abzug).
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-lsd-herstellen">
+    <div class="card">
+      <div class="note" style="margin-top:0; margin-bottom:16px; font-style:normal; background:var(--input-bg); border:1px solid var(--accent); border-radius:10px; padding:12px 14px;">
+        💡 <b style="color:var(--text);">Tipp fürs Mischverhältnis:</b> Bei <b style="color:var(--accent-bright);">76 zu 24</b> bekommst du <b style="color:var(--good);">99% Genauigkeit</b> und <b style="color:var(--good);">100% Qualität (Sehr gut)</b>.
+      </div>
+
+      <label for="qty-lsd">Anzahl LSD</label>
+      <div class="stepper">
+        <button onclick="stepQty('lsd',-1)">−</button>
+        <input type="number" id="qty-lsd" value="1" min="0">
+        <button onclick="stepQty('lsd',1)">+</button>
+      </div>
+
+      <label for="qty-lsd-pilze" style="margin-top:18px;">ODER: Anzahl Pilze eingeben</label>
+      <div class="stepper">
+        <button onclick="stepPilze(-2)">−</button>
+        <input type="number" id="qty-lsd-pilze" value="2" min="0">
+        <button onclick="stepPilze(2)">+</button>
+      </div>
+      <div class="note" id="pilzeInfo" style="font-style:normal;"></div>
+
+      <table><thead><tr><th>Material</th><th class="num">Pro LSD</th><th class="num">Gesamt</th><th class="num">Kosten</th></tr></thead><tbody id="body-lsd"></tbody></table>
+      <div class="note" id="cost-lsd"></div>
+      <button class="copy-btn" onclick="copyList('lsd')">📋 Liste kopieren</button>
+      <div class="steps">
+        <b>Herstellungsschritte:</b><br>
+        1) 2 Pilze + 1 Chemisches Lösungsmittel = 1 LSD Extract<br>
+        2) 1 LSD Extract + 1 destilliertes Wasser = 1 Stabilisiertes Lösungsmittel<br>
+        3) 1 Stabilisiertes Lösungsmittel + 1 Spezial Papier = 1 LSD
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-lsd-verkaufen">
+    <div class="card">
+      <div style="font-weight:700; font-size:1.05rem; margin-bottom:4px;">Tatsächliche Kosten pro LSD</div>
+      <div class="note" style="margin-top:0; margin-bottom:16px;">Die Ausbeute pro Herstellungsdurchgang schwankt (mal 2, mal 3 LSD) — trag ein, wie viele Durchgänge du gemacht hast und wie viel LSD dabei rauskam, dann rechnen wir die echten Kosten pro LSD aus.</div>
+
+      <label for="ausbeuteDurchgaenge">Herstellungsdurchgänge (à 230$)</label>
+      <div class="stepper">
+        <button onclick="stepAusbeute('durchgaenge',-1)">−</button>
+        <input type="number" id="ausbeuteDurchgaenge" value="1" min="0">
+        <button onclick="stepAusbeute('durchgaenge',1)">+</button>
+      </div>
+
+      <label for="ausbeuteErhalten" style="margin-top:18px;">Daraus tatsächlich erhaltene LSD</label>
+      <div class="stepper">
+        <button onclick="stepAusbeute('erhalten',-1)">−</button>
+        <input type="number" id="ausbeuteErhalten" value="1" min="0">
+        <button onclick="stepAusbeute('erhalten',1)">+</button>
+      </div>
+
+      <div class="note" id="kostenProLsdInfo" style="font-style:normal; font-weight:700; margin-top:10px;"></div>
+    </div>
+
+    <div class="card">
+      <label for="verkaufAnzahl">Anzahl LSD verkaufen</label>
+      <div class="stepper">
+        <button onclick="stepVerkauf(-1)">−</button>
+        <input type="number" id="verkaufAnzahl" value="1" min="0">
+        <button onclick="stepVerkauf(1)">+</button>
+      </div>
+
+      <label for="verkaufPreis" style="margin-top:18px;">Verkaufspreis pro LSD ($)</label>
+      <input type="number" id="verkaufPreis" value="0" min="0" style="width:100%; max-width:220px; font-size:1.15rem; font-weight:700; padding:10px 14px; border-radius:10px; border:2px solid var(--accent); background:var(--input-bg); color:var(--text);">
+      <div class="note" style="margin-top:6px;">Preis schwankt je nach Verkäufer — hier einfach den aktuellen Preis eintragen.</div>
+
+      <div class="card" style="margin-top:20px; background:var(--input-bg);">
+        <table style="margin-top:0;">
+          <tbody>
+            <tr><td>Herstellungskosten</td><td class="num" id="verkaufKosten"></td></tr>
+            <tr><td>Verkaufserlös</td><td class="num" id="verkaufErloes"></td></tr>
+            <tr><td style="font-weight:700;">Profit</td><td class="num total" id="verkaufProfit" style="font-size:1.1rem;"></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-messer">
+    <div class="card">
+      <div class="item-head">
+        <div class="item-icon">🗡️</div>
+        <div>
+          <div style="font-weight:700; font-size:1.05rem;">Schlangenmesser</div>
+          <div style="color:var(--text-muted); font-size:0.85rem;">Ein gewelltes Klingenmesser mit schlangenförmiger Schneide — unauffällig, aber gefährlich scharf.</div>
+        </div>
+      </div>
+      <div class="meta-row">
+        <div class="meta-box"><div class="k">Produktionsdauer</div><div class="v">120 Min.</div></div>
+        <div class="meta-box"><div class="k">Belohnung</div><div class="v" style="color:var(--good);">+50 Waffenbau-XP</div></div>
+      </div>
+      <label for="qty-messer">Anzahl Schlangenmesser</label>
+      <div class="stepper">
+        <button onclick="stepQty('messer',-1)">−</button>
+        <input type="number" id="qty-messer" value="1" min="0">
+        <button onclick="stepQty('messer',1)">+</button>
+      </div>
+      <table><thead><tr><th>Material</th><th class="num">Pro Messer</th><th class="num">Gesamt</th><th class="num">Kosten</th></tr></thead><tbody id="body-messer"></tbody></table>
+      <div class="note" id="cost-messer"></div>
+      <button class="copy-btn" onclick="copyList('messer')">📋 Liste kopieren</button>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-dolch">
+    <div class="card">
+      <div class="item-head">
+        <div class="item-icon">🔪</div>
+        <div>
+          <div style="font-weight:700; font-size:1.05rem;">Dolch</div>
+          <div style="color:var(--text-muted); font-size:0.85rem;">Ein schmaler, beidseitig geschliffener Dolch — lautlos und tödlich auf kurze Distanz.</div>
+        </div>
+      </div>
+      <div class="meta-row">
+        <div class="meta-box"><div class="k">Produktionsdauer</div><div class="v">360 Min.</div></div>
+        <div class="meta-box"><div class="k">Belohnung</div><div class="v" style="color:var(--good);">+50 Waffenbau-XP</div></div>
+      </div>
+      <label for="qty-dolch">Anzahl Dolche</label>
+      <div class="stepper">
+        <button onclick="stepQty('dolch',-1)">−</button>
+        <input type="number" id="qty-dolch" value="1" min="0">
+        <button onclick="stepQty('dolch',1)">+</button>
+      </div>
+      <table><thead><tr><th>Material</th><th class="num">Pro Dolch</th><th class="num">Gesamt</th><th class="num">Kosten</th></tr></thead><tbody id="body-dolch"></tbody></table>
+      <div class="note" id="cost-dolch"></div>
+      <button class="copy-btn" onclick="copyList('dolch')">📋 Liste kopieren</button>
+      <div class="note">Materialien werden sofort verbraucht, die Waffe entsteht danach im Hintergrund — komm nach 360 Min. zu einer Waffenwerkbank.</div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-munition">
+    <div class="card">
+      <div class="item-head">
+        <div class="item-icon">📦</div>
+        <div>
+          <div style="font-weight:700; font-size:1.05rem;">9mm-Munition</div>
+          <div style="color:var(--text-muted); font-size:0.85rem;">Wird direkt vor Ort hergestellt — passend für jede Waffe mit diesem Kaliber.</div>
+        </div>
+      </div>
+      <div class="meta-row">
+        <div class="meta-box"><div class="k">Herstellungsdauer</div><div class="v">8s</div></div>
+        <div class="meta-box"><div class="k">Ausbeute pro Herstellung</div><div class="v" style="color:var(--good);">30x 9mm-Munition</div></div>
+      </div>
+      <label for="qty-munition">Gewünschte Menge 9mm-Munition</label>
+      <div class="stepper">
+        <button onclick="stepQty('munition',-30)">−</button>
+        <input type="number" id="qty-munition" value="30" min="0">
+        <button onclick="stepQty('munition',30)">+</button>
+      </div>
+      <div id="munitionRunden" style="margin-top:14px; font-size:0.9rem; color:var(--text-muted);"></div>
+      <table><thead><tr><th>Material</th><th class="num">Pro Herstellung</th><th class="num">Gesamt</th><th class="num">Kosten</th></tr></thead><tbody id="body-munition"></tbody></table>
+      <div class="note" id="cost-munition"></div>
+      <button class="copy-btn" onclick="copyList('munition')">📋 Liste kopieren</button>
+      <div class="note">Die Munition wird in 30er-Batches hergestellt. Menge wird automatisch auf volle Durchgänge aufgerundet.</div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-inventar">
+    <div class="card">
+      <div style="font-weight:700; font-size:1.05rem; margin-bottom:4px;">Mein Lagerbestand</div>
+      <div class="note" style="margin-top:0; margin-bottom:16px;">Trag hier ein, wie viel du von jedem Material schon besitzt. Wird lokal in deinem Browser gespeichert.</div>
+      <div class="inv-grid" id="inventoryGrid"></div>
+      <button class="copy-btn" style="margin-top:18px; border-color:var(--bad); color:var(--bad);" onclick="resetInventory()">🗑️ Inventar zurücksetzen</button>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-uebersicht">
+    <div class="card">
+      <div style="font-weight:700; font-size:1.05rem; margin-bottom:4px;">Gesamtbedarf aller Rezepte</div>
+      <div class="note" style="margin-top:0; margin-bottom:16px;">Basierend auf den Stückzahlen, die du unter Waffen (Pistol/Schlangenmesser/Dolch), LSD und Munition eingetragen hast, abzüglich deines Inventars.</div>
+      <table><thead><tr><th>Material</th><th class="num">Gesamt benötigt</th><th class="num">Vorhanden</th><th class="num">Noch benötigt</th><th class="num">Kosten (fehlend)</th></tr></thead><tbody id="body-uebersicht"></tbody></table>
+      <div class="note" id="cost-uebersicht" style="font-size:0.95rem; font-weight:700; color:var(--accent-bright); font-style:normal;"></div>
+      <button class="copy-btn" onclick="copyOverview()">📋 Gesamtliste kopieren</button>
+    </div>
+    <div class="card">
+      <div style="font-weight:700; font-size:1.05rem; margin-bottom:12px;">Maximal herstellbar (aus deinem Inventar)</div>
+      <div class="craftable-list" id="craftableList"></div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-changelog">
+    <div class="card">
+      <div style="font-weight:700; font-size:1.1rem; margin-bottom:14px;">📜 Änderungsverlauf</div>
+      <div style="display:flex; flex-direction:column; gap:14px;">
+        <div><b style="color:var(--accent-bright);">22.</b> Changelog-Tab hinzugefügt (diese Liste).</div>
+        <div><b style="color:var(--accent-bright);">21.</b> 9mm-Munition-Rezept geändert: jetzt 18 Aluminium + 30 Stahl pro Herstellung.</div>
+        <div><b style="color:var(--accent-bright);">20.</b> Hinweis-Box im LSD-Herstellen-Tab: Mischverhältnis 76 zu 24 = 99% Genauigkeit, 100% Qualität (Sehr gut).</div>
+        <div><b style="color:var(--accent-bright);">19.</b> LSD-Verkauf: Qualitäts-Dropdown entfernt (Preis schwankt je Käufer) — nur noch ein manuelles Verkaufspreis-Feld.</div>
+        <div><b style="color:var(--accent-bright);">18.</b> LSD-Verkauf: echte Kosten pro LSD werden jetzt aus Herstellungsdurchgängen ÷ tatsächlich erhaltener Menge berechnet (Ausbeute schwankt zwischen 2–3 LSD), statt fix 230$/LSD.</div>
+        <div><b style="color:var(--accent-bright);">17.</b> LSD-Tab in Unterreiter "Herstellen" (mit verknüpfter Pilze/LSD-Eingabe) und "Verkaufen" (Anzahl, Qualität, Herstellungskosten 230$, Erlös, Profit) aufgeteilt.</div>
+        <div><b style="color:var(--accent-bright);">16.</b> Icons (Emojis) bei allen Tabs wieder ergänzt, Suchleiste vergrößert.</div>
+        <div><b style="color:var(--accent-bright);">15.</b> HTA-Bugfix: nicht unterstützte Methoden (querySelectorAll, getElementsByClassName) durch IE-kompatible Alternativen ersetzt.</div>
+        <div><b style="color:var(--accent-bright);">14.</b> "Waffen" zur Oberkategorie mit Unterreitern Pistol / Schlangenmesser / Dolch umgebaut; bisherige "Waffe" in "Pistol" umbenannt (Icon & Zeiten aus Screenshots übernommen).</div>
+        <div><b style="color:var(--accent-bright);">13.</b> Dolch-Rezept hinzugefügt (45 Stahl, 24 Schrauben, 18 Waffenteile, 360 Min., +50 XP).</div>
+        <div><b style="color:var(--accent-bright);">12.</b> Materialpreise hinterlegt (Spezial Papier 90$, Dest. Wasser 20$, Chem. Lösungsmittel 120$, Waffenlauf 150$, Abzug 120$) + Gesamtkosten-Anzeige pro Rezept & in der Übersicht.</div>
+        <div><b style="color:var(--accent-bright);">11.</b> Mobile-Optimierung: größere Touch-Targets, scrollbare Tab-Leiste, angepasste Schriftgrößen für kleine Bildschirme.</div>
+        <div><b style="color:var(--accent-bright);">10.</b> Waffenchip- und Waffen-Zutaten im Pistol-Tab getrennt dargestellt (Chip / Waffe / Kombiniert).</div>
+        <div><b style="color:var(--accent-bright);">9.</b> Reset-Button für das Inventar hinzugefügt.</div>
+        <div><b style="color:var(--accent-bright);">8.</b> Übersicht-Tab (Gesamtbedarf + Rückwärtsrechner "maximal herstellbar"), Inventar-Tab, Browser-Speicherung, Kopieren-Buttons und Materialsuche eingebaut.</div>
+        <div><b style="color:var(--accent-bright);">7.</b> Blood-Crown-Logo als Favicon/Icon eingebaut.</div>
+        <div><b style="color:var(--accent-bright);">6.</b> 9mm-Munition-Rezept hinzugefügt (Batch-System, ursprünglich 30x Ausbeute aus 6 Aluminium + 10 Stahl).</div>
+        <div><b style="color:var(--accent-bright);">5.</b> Schlangenmesser-Rezept hinzugefügt (15 Stahl, 8 Schrauben, 6 Waffenteile, 120 Min., +50 XP).</div>
+        <div><b style="color:var(--accent-bright);">4.</b> Blood-Crown-Design (dunkles Rot/Pink-Gothic) und Logo ins Tool eingebaut.</div>
+        <div><b style="color:var(--accent-bright);">3.</b> HTA-Bugfix: innerHTML-Zuweisung auf Tabellen-Elementen durch insertRow/insertCell ersetzt (IE-Skriptfehler behoben).</div>
+        <div><b style="color:var(--accent-bright);">2.</b> Zusätzliche .hta-Version erstellt (offline lauffähig per Doppelklick, ohne Internet).</div>
+        <div><b style="color:var(--accent-bright);">1.</b> Erste Version: Waffen- und LSD-Rezeptrechner als Excel-Datei und interaktiver HTML-Rechner erstellt.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const WAFFENCHIP_MATERIALS = [["Plastik",24],["Polymer",15],["Aluminium",12],["Schrauben",18]];
+  const WAFFE_ONLY_MATERIALS = [["Stahl",75],["Schrauben",36],["Waffenteile",24],["Waffenlauf",3],["Abzug",3]];
+
+  const PRICES = {
+    "Plastik": 0, "Polymer": 0, "Aluminium": 0, "Schrauben": 0, "Stahl": 0, "Waffenteile": 0,
+    "Waffenlauf": 150, "Abzug": 120, "Pilze": 0, "Chemisches Lösungsmittel": 120,
+    "Destilliertes Wasser": 20, "Spezial Papier": 90
+  };
+  function priceOf(name) { return PRICES[name] || 0; }
+
+  const RECIPES = {
+    pistol:   { label: "Pistol", unitLabel: "Pistol", batchSize: 1,
+      materials: [["Plastik",24],["Polymer",15],["Aluminium",12],["Schrauben",54],["Stahl",75],["Waffenteile",24],["Waffenlauf",3],["Abzug",3]],
+      subgroups: [["body-pistol-chip", WAFFENCHIP_MATERIALS], ["body-pistol-item", WAFFE_ONLY_MATERIALS]] },
+    lsd:      { label: "LSD", unitLabel: "LSD", batchSize: 1,
+      materials: [["Pilze",2],["Chemisches Lösungsmittel",1],["Destilliertes Wasser",1],["Spezial Papier",1]] },
+    messer:   { label: "Schlangenmesser", unitLabel: "Messer", batchSize: 1,
+      materials: [["Stahl",15],["Schrauben",8],["Waffenteile",6]] },
+    dolch:    { label: "Dolch", unitLabel: "Dolch", batchSize: 1,
+      materials: [["Stahl",45],["Schrauben",24],["Waffenteile",18]] },
+    munition: { label: "9mm-Munition", unitLabel: "Munition", batchSize: 30,
+      materials: [["Aluminium",18],["Stahl",30]] },
+  };
+
+  const STORAGE_KEY = "bloodcrown_rechner_v1";
+
+  function loadState() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch (e) {}
+    return { qty: {}, inventory: {} };
+  }
+  function saveState() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
+  }
+
+  let state = loadState();
+  if (!state.qty) state.qty = {};
+  if (!state.inventory) state.inventory = {};
+
+  function getUniqueMaterials() {
+    const set = new Set();
+    Object.values(RECIPES).forEach(r => r.materials.forEach(([n]) => set.add(n)));
+    return Array.from(set).sort((a, b) => a.localeCompare(b, "de"));
+  }
+
+  function getQty(key) {
+    const el = document.getElementById("qty-" + key);
+    const v = parseInt(el.value, 10);
+    return isNaN(v) || v < 0 ? 0 : v;
+  }
+
+  function computeRounds(key, qty) {
+    const batch = RECIPES[key].batchSize;
+    return batch === 1 ? qty : Math.ceil(qty / batch);
+  }
+
+  function buildRecipeTable(key) {
+    const qty = getQty(key);
+    const rounds = computeRounds(key, qty);
+    const r = RECIPES[key];
+
+    if (r.subgroups) {
+      r.subgroups.forEach(([bodyId, materials]) => {
+        const body = document.getElementById(bodyId);
+        body.innerHTML = "";
+        materials.forEach(([name, per]) => {
+          const total = per * rounds;
+          const cost = priceOf(name) * total;
+          const tr = document.createElement("tr");
+          tr.dataset.material = name;
+          tr.innerHTML = `<td>${name}</td><td class="num">${per}</td><td class="num total">${total}</td><td class="num">${cost > 0 ? cost + "$" : "—"}</td>`;
+          body.appendChild(tr);
+        });
+      });
+    }
+
+    const body = document.getElementById("body-" + key);
+    body.innerHTML = "";
+    let totalCost = 0;
+    r.materials.forEach(([name, per]) => {
+      const total = per * rounds;
+      const cost = priceOf(name) * total;
+      totalCost += cost;
+      const tr = document.createElement("tr");
+      tr.dataset.material = name;
+      tr.innerHTML = `<td>${name}</td><td class="num">${per}</td><td class="num total">${total}</td><td class="num">${cost > 0 ? cost + "$" : "—"}</td>`;
+      body.appendChild(tr);
+    });
+    const costEl = document.getElementById("cost-" + key);
+    if (costEl) costEl.innerHTML = `<b style="color:var(--accent-bright); font-style:normal;">Gesamtkosten: ${totalCost}$</b>`;
+
+    if (key === "munition") {
+      const hergestellt = rounds * RECIPES.munition.batchSize;
+      document.getElementById("munitionRunden").textContent =
+        `${rounds} Herstellungsdurchgang(-gänge) nötig → ${hergestellt}x 9mm-Munition insgesamt.`;
+    }
+  }
+
+  function refreshAllRecipeTabs() {
+    Object.keys(RECIPES).forEach(buildRecipeTable);
+  }
+
+  function stepQty(key, delta) {
+    const el = document.getElementById("qty-" + key);
+    const newVal = Math.max(0, (parseInt(el.value, 10) || 0) + delta);
+    el.value = newVal;
+    onQtyChange(key);
+  }
+
+  function onQtyChange(key) {
+    state.qty[key] = getQty(key);
+    saveState();
+    buildRecipeTable(key);
+    refreshOverview();
+    applySearchFilter();
+    if (key === "lsd") syncPilzeFromLsd();
+  }
+
+  // ---------- LSD Pilze-Verknüpfung ----------
+  function syncPilzeFromLsd() {
+    const qty = getQty("lsd");
+    document.getElementById("qty-lsd-pilze").value = qty * 2;
+    document.getElementById("pilzeInfo").textContent = "";
+  }
+
+  function stepPilze(delta) {
+    const el = document.getElementById("qty-lsd-pilze");
+    const newVal = Math.max(0, (parseInt(el.value, 10) || 0) + delta);
+    el.value = newVal;
+    onPilzeChange();
+  }
+
+  function onPilzeChange() {
+    const pilze = Math.max(0, parseInt(document.getElementById("qty-lsd-pilze").value, 10) || 0);
+    const achievable = Math.floor(pilze / 2);
+    const rest = pilze - achievable * 2;
+    document.getElementById("qty-lsd").value = achievable;
+    document.getElementById("pilzeInfo").textContent =
+      `Aus ${pilze} Pilzen kannst du ${achievable} LSD herstellen` + (rest > 0 ? ` (${rest} Pilz übrig)` : "") + ".";
+    state.qty.lsd = achievable;
+    saveState();
+    buildRecipeTable("lsd");
+    refreshOverview();
+    applySearchFilter();
+  }
+
+  document.getElementById("qty-lsd-pilze").addEventListener("input", onPilzeChange);
+
+  // ---------- LSD Ausbeute (Kosten pro LSD aus Durchgängen berechnen) ----------
+  if (!state.ausbeute) state.ausbeute = { durchgaenge: 1, erhalten: 1 };
+
+  function stepAusbeute(field, delta) {
+    const id = field === "durchgaenge" ? "ausbeuteDurchgaenge" : "ausbeuteErhalten";
+    const el = document.getElementById(id);
+    const newVal = Math.max(0, (parseInt(el.value, 10) || 0) + delta);
+    el.value = newVal;
+    onAusbeuteChange();
+  }
+
+  function getKostenProLsd() {
+    const durchgaenge = Math.max(0, parseInt(document.getElementById("ausbeuteDurchgaenge").value, 10) || 0);
+    const erhalten = Math.max(0, parseInt(document.getElementById("ausbeuteErhalten").value, 10) || 0);
+    const gesamtkosten = durchgaenge * LSD_PRODUKTIONSKOSTEN;
+    const proLsd = erhalten > 0 ? gesamtkosten / erhalten : 0;
+    return { durchgaenge, erhalten, gesamtkosten, proLsd };
+  }
+
+  function onAusbeuteChange() {
+    const a = getKostenProLsd();
+    state.ausbeute.durchgaenge = a.durchgaenge;
+    state.ausbeute.erhalten = a.erhalten;
+    saveState();
+    const info = document.getElementById("kostenProLsdInfo");
+    if (a.erhalten > 0) {
+      info.textContent = `${a.durchgaenge}x Durchgang à 230$ = ${a.gesamtkosten}$ Gesamtkosten ÷ ${a.erhalten} LSD = ${a.proLsd.toFixed(2)}$ pro LSD`;
+    } else {
+      info.textContent = "Trag ein, wie viel LSD du erhalten hast, um die Kosten pro LSD zu berechnen.";
+    }
+    refreshVerkauf();
+  }
+
+  document.getElementById("ausbeuteDurchgaenge").addEventListener("input", onAusbeuteChange);
+  document.getElementById("ausbeuteErhalten").addEventListener("input", onAusbeuteChange);
+
+  // ---------- LSD Verkaufsrechner ----------
+  const LSD_PRODUKTIONSKOSTEN = 230;
+  if (state.verkaufPreis == null) state.verkaufPreis = 0;
+
+  function stepVerkauf(delta) {
+    const el = document.getElementById("verkaufAnzahl");
+    const newVal = Math.max(0, (parseInt(el.value, 10) || 0) + delta);
+    el.value = newVal;
+    refreshVerkauf();
+  }
+
+  function onVerkaufPreisChange() {
+    const price = Math.max(0, parseInt(document.getElementById("verkaufPreis").value, 10) || 0);
+    state.verkaufPreis = price;
+    saveState();
+    refreshVerkauf();
+  }
+
+  function refreshVerkauf() {
+    const qty = Math.max(0, parseInt(document.getElementById("verkaufAnzahl").value, 10) || 0);
+    const pricePerUnit = Math.max(0, parseInt(document.getElementById("verkaufPreis").value, 10) || 0);
+    const kostenProLsd = getKostenProLsd().proLsd;
+    const kosten = qty * kostenProLsd;
+    const erloes = qty * pricePerUnit;
+    const profit = erloes - kosten;
+    document.getElementById("verkaufKosten").textContent = `${kosten.toFixed(2)}$  (${qty}x à ${kostenProLsd.toFixed(2)}$)`;
+    document.getElementById("verkaufErloes").textContent = `${erloes}$  (${qty}x à ${pricePerUnit}$)`;
+    const profitEl = document.getElementById("verkaufProfit");
+    profitEl.textContent = `${profit >= 0 ? "+" : ""}${profit.toFixed(2)}$`;
+    profitEl.style.color = profit >= 0 ? "var(--good)" : "var(--bad)";
+  }
+
+  document.getElementById("verkaufAnzahl").addEventListener("input", refreshVerkauf);
+  document.getElementById("verkaufPreis").addEventListener("input", onVerkaufPreisChange);
+  document.getElementById("verkaufPreis").value = state.verkaufPreis;
+  if (state.ausbeute.durchgaenge != null) document.getElementById("ausbeuteDurchgaenge").value = state.ausbeute.durchgaenge;
+  if (state.ausbeute.erhalten != null) document.getElementById("ausbeuteErhalten").value = state.ausbeute.erhalten;
+  onAusbeuteChange();
+
+  // ---------- Inventory ----------
+  function buildInventoryGrid() {
+    const grid = document.getElementById("inventoryGrid");
+    grid.innerHTML = "";
+    getUniqueMaterials().forEach(name => {
+      const label = document.createElement("label");
+      label.textContent = name;
+      const input = document.createElement("input");
+      input.type = "number";
+      input.min = "0";
+      input.value = state.inventory[name] || 0;
+      input.addEventListener("input", () => {
+        state.inventory[name] = Math.max(0, parseInt(input.value, 10) || 0);
+        saveState();
+        refreshOverview();
+      });
+      grid.appendChild(label);
+      grid.appendChild(input);
+    });
+  }
+
+  function getInventory(name) { return state.inventory[name] || 0; }
+
+  function resetInventory() {
+    if (!confirm("Wirklich das gesamte Inventar auf 0 zurücksetzen?")) return;
+    state.inventory = {};
+    saveState();
+    buildInventoryGrid();
+    refreshOverview();
+  }
+
+  // ---------- Übersicht ----------
+  function aggregateTotals() {
+    const totals = {};
+    Object.keys(RECIPES).forEach(key => {
+      const qty = getQty(key);
+      const rounds = computeRounds(key, qty);
+      RECIPES[key].materials.forEach(([name, per]) => {
+        totals[name] = (totals[name] || 0) + per * rounds;
+      });
+    });
+    return totals;
+  }
+
+  function refreshOverview() {
+    const totals = aggregateTotals();
+    const body = document.getElementById("body-uebersicht");
+    body.innerHTML = "";
+    let grandTotalCost = 0;
+    getUniqueMaterials().forEach(name => {
+      const need = totals[name] || 0;
+      const have = getInventory(name);
+      const missing = Math.max(0, need - have);
+      const cost = priceOf(name) * missing;
+      grandTotalCost += cost;
+      const tr = document.createElement("tr");
+      tr.dataset.material = name;
+      const cls = missing === 0 ? "deficit-ok" : "deficit-bad";
+      const missingText = missing === 0 ? "✓ genug" : missing;
+      tr.innerHTML = `<td>${name}</td><td class="num">${need}</td><td class="num">${have}</td><td class="num ${cls}">${missingText}</td><td class="num">${cost > 0 ? cost + "$" : "—"}</td>`;
+      body.appendChild(tr);
+    });
+    document.getElementById("cost-uebersicht").textContent = `Gesamtkosten fehlender Materialien: ${grandTotalCost}$`;
+    refreshCraftable();
+  }
+
+  function refreshCraftable() {
+    const list = document.getElementById("craftableList");
+    list.innerHTML = "";
+    Object.keys(RECIPES).forEach(key => {
+      const r = RECIPES[key];
+      let maxUnits = Infinity;
+      r.materials.forEach(([name, per]) => {
+        const have = getInventory(name);
+        maxUnits = Math.min(maxUnits, Math.floor(have / per));
+      });
+      if (!isFinite(maxUnits)) maxUnits = 0;
+      const totalItems = maxUnits * r.batchSize;
+      const div = document.createElement("div");
+      div.className = "craftable-item";
+      div.innerHTML = `<span>${r.label}</span><span class="n">${totalItems}x</span>`;
+      list.appendChild(div);
+    });
+  }
+
+  // ---------- Copy ----------
+  function copyText(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).catch(() => fallbackCopy(text));
+    } else {
+      fallbackCopy(text);
+    }
+  }
+  function fallbackCopy(text) {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); } catch (e) {}
+    document.body.removeChild(ta);
+  }
+
+  function copyList(key) {
+    const qty = getQty(key);
+    const rounds = computeRounds(key, qty);
+    const r = RECIPES[key];
+    let totalCost = 0;
+    let lines = [`${r.label} (${qty}x ${r.unitLabel}):`];
+    r.materials.forEach(([name, per]) => {
+      const total = per * rounds;
+      const cost = priceOf(name) * total;
+      totalCost += cost;
+      lines.push(`- ${name}: ${total}${cost > 0 ? " (" + cost + "$)" : ""}`);
+    });
+    lines.push(`Gesamtkosten: ${totalCost}$`);
+    copyText(lines.join("\n"));
+  }
+
+  function copyOverview() {
+    const totals = aggregateTotals();
+    let grandTotalCost = 0;
+    let lines = ["Gesamtbedarf:"];
+    getUniqueMaterials().forEach(name => {
+      const need = totals[name] || 0;
+      if (need > 0) {
+        const have = getInventory(name);
+        const missing = Math.max(0, need - have);
+        const cost = priceOf(name) * missing;
+        grandTotalCost += cost;
+        lines.push(`- ${name}: ${need} benötigt, ${have} vorhanden, ${missing} fehlend${cost > 0 ? " (" + cost + "$)" : ""}`);
+      }
+    });
+    lines.push(`Gesamtkosten fehlender Materialien: ${grandTotalCost}$`);
+    copyText(lines.join("\n"));
+  }
+
+  // ---------- Search ----------
+  function applySearchFilter() {
+    const q = document.getElementById("searchInput").value.trim().toLowerCase();
+    const hitsBox = document.getElementById("searchHits");
+    document.querySelectorAll("table tbody tr[data-material]").forEach(tr => {
+      tr.classList.remove("search-match", "search-dim");
+      if (q && !document.getElementById("panel-inventar").classList.contains("hidden-noop")) {
+        const match = tr.dataset.material.toLowerCase().includes(q);
+        if (match) tr.classList.add("search-match"); else tr.classList.add("search-dim");
+      }
+    });
+    if (!q) { hitsBox.classList.remove("show"); hitsBox.innerHTML = ""; return; }
+    const activePanel = document.querySelector(".panel.active");
+    const activePanelKey = activePanel ? activePanel.id.replace("panel-", "") : "";
+    const activeTabKey = SUBTAB_TO_RECIPE[activePanelKey] || activePanelKey;
+    const otherTabs = [];
+    Object.keys(RECIPES).forEach(key => {
+      if (key === activeTabKey) return;
+      const has = RECIPES[key].materials.some(([n]) => n.toLowerCase().includes(q));
+      if (has) otherTabs.push(key);
+    });
+    if (otherTabs.length) {
+      hitsBox.classList.add("show");
+      hitsBox.innerHTML = "Auch verwendet in: " + otherTabs.map(k => `<span onclick="jumpToRecipe('${k}')">${RECIPES[k].label}</span>`).join("");
+    } else {
+      hitsBox.classList.remove("show");
+      hitsBox.innerHTML = "";
+    }
+  }
+
+  function jumpToRecipe(key) {
+    for (const groupKey of Object.keys(GROUPS)) {
+      if (GROUPS[groupKey].subtabs.includes(key)) { switchTab(groupKey); switchGroupSubTab(groupKey, key); return; }
+    }
+    const mappedSub = Object.keys(SUBTAB_TO_RECIPE).find(sub => SUBTAB_TO_RECIPE[sub] === key);
+    if (mappedSub) {
+      for (const groupKey of Object.keys(GROUPS)) {
+        if (GROUPS[groupKey].subtabs.includes(mappedSub)) { switchTab(groupKey); switchGroupSubTab(groupKey, mappedSub); return; }
+      }
+    }
+    switchTab(key);
+  }
+
+  // ---------- Tabs ----------
+  const GROUPS = {
+    waffen: { subtabs: ["pistol", "messer", "dolch"], barId: "weaponSubTabBar", defaultSub: "pistol" },
+    lsd:    { subtabs: ["lsd-herstellen", "lsd-verkaufen"], barId: "lsdSubTabBar", defaultSub: "lsd-herstellen" },
+  };
+  const SUBTAB_TO_RECIPE = { "lsd-herstellen": "lsd" };
+
+  function switchTab(key) {
+    document.querySelectorAll("#tabBar .tab-btn").forEach(b => b.classList.toggle("active", b.dataset.tab === key));
+    Object.values(GROUPS).forEach(g => document.getElementById(g.barId).classList.remove("show"));
+    if (GROUPS[key]) {
+      const group = GROUPS[key];
+      document.getElementById(group.barId).classList.add("show");
+      if (!state.activeSubTab) state.activeSubTab = {};
+      const current = group.subtabs.includes(state.activeSubTab[key]) ? state.activeSubTab[key] : group.defaultSub;
+      switchGroupSubTab(key, current);
+    } else {
+      document.querySelectorAll(".panel").forEach(p => p.classList.toggle("active", p.id === "panel-" + key));
+    }
+    applySearchFilter();
+  }
+
+  function switchGroupSubTab(groupKey, subKey) {
+    if (!state.activeSubTab) state.activeSubTab = {};
+    state.activeSubTab[groupKey] = subKey;
+    saveState();
+    const group = GROUPS[groupKey];
+    document.querySelectorAll("#" + group.barId + " .tab-btn").forEach(b => b.classList.toggle("active", b.dataset.subtab === subKey));
+    document.querySelectorAll(".panel").forEach(p => p.classList.toggle("active", p.id === "panel-" + subKey));
+    applySearchFilter();
+  }
+
+  document.getElementById("tabBar").addEventListener("click", e => {
+    const btn = e.target.closest(".tab-btn");
+    if (btn) switchTab(btn.dataset.tab);
+  });
+
+  Object.keys(GROUPS).forEach(groupKey => {
+    document.getElementById(GROUPS[groupKey].barId).addEventListener("click", e => {
+      const btn = e.target.closest(".tab-btn");
+      if (btn) switchGroupSubTab(groupKey, btn.dataset.subtab);
+    });
+  });
+
+  Object.keys(RECIPES).forEach(key => {
+    const input = document.getElementById("qty-" + key);
+    input.value = state.qty[key] != null ? state.qty[key] : input.value;
+    input.addEventListener("input", () => onQtyChange(key));
+  });
+
+  document.getElementById("searchInput").addEventListener("input", applySearchFilter);
+
+  // ---------- Init ----------
+  buildInventoryGrid();
+  refreshAllRecipeTabs();
+  refreshOverview();
+  syncPilzeFromLsd();
+  refreshVerkauf();
+</script>
+</body>
+</html>
